@@ -1,15 +1,16 @@
 // =============================================================================
 // Project: TileLink Inclusive Directory Coherence (TIDC) System
-// Module: TIDC System Testbench
-// Description: Testbench for direct TileLink adapter testing (no cache stubs)
+// Module: TIDC System Testbench (Verilator Compatible)
+// Description: Testbench for direct TileLink adapter testing - compatible with Verilator
 // =============================================================================
 
 `include "../rtl/tidc_params.vh"
 
-module tidc_system_tb;
+module tidc_system_tb (
+    input wire clk  // Clock driven from C++ for Verilator compatibility
+);
 
-    // Clock and reset
-    reg clk;
+    // Reset
     reg rst_n;
     
     // Parameters
@@ -106,7 +107,7 @@ module tidc_system_tb;
     reg  [2:0]                  l1_3_probe_ack_permissions;
     reg  [CACHE_LINE_BITS-1:0]  l1_3_probe_ack_dirty_data;
     
-    // L2 TileLink Adapter interface (corrected directions)
+    // L2 TileLink Adapter interface
     wire                        l2_cmd_valid;
     wire [2:0]                  l2_cmd_type;
     wire [WADDR-1:0]            l2_cmd_addr;
@@ -128,106 +129,20 @@ module tidc_system_tb;
     localparam [CACHE_LINE_BITS-1:0] DATA_PATTERN_2 = {{CACHE_LINE_BITS/2{1'b1}}, {CACHE_LINE_BITS/2{1'b0}}};
     localparam [CACHE_LINE_BITS-1:0] DATA_PATTERN_3 = {{CACHE_LINE_BITS/4{1'b1}}, {CACHE_LINE_BITS/4{1'b0}}, {CACHE_LINE_BITS/4{1'b1}}, {CACHE_LINE_BITS/4{1'b0}}};
     
-    // Helper tasks for L1 requests
-    task send_l1_request;
-        input [1:0] l1_id;
-        input [WADDR-1:0] addr;
-        input [2:0] req_type;  // 000=ReadMiss, 001=WriteMiss, 010=WriteBack
-        input [2:0] permissions; // NtoB, NtoT, BtoT
-        input [CACHE_LINE_BITS-1:0] data;
-        begin
-            case (l1_id)
-                2'd0: begin
-                    l1_0_request_valid = 1'b1;
-                    l1_0_request_addr = addr;
-                    l1_0_request_type = req_type;
-                    l1_0_request_permissions = permissions;
-                    l1_0_request_data = data;
-                end
-                2'd1: begin
-                    l1_1_request_valid = 1'b1;
-                    l1_1_request_addr = addr;
-                    l1_1_request_type = req_type;
-                    l1_1_request_permissions = permissions;
-                    l1_1_request_data = data;
-                end
-                2'd2: begin
-                    l1_2_request_valid = 1'b1;
-                    l1_2_request_addr = addr;
-                    l1_2_request_type = req_type;
-                    l1_2_request_permissions = permissions;
-                    l1_2_request_data = data;
-                end
-                2'd3: begin
-                    l1_3_request_valid = 1'b1;
-                    l1_3_request_addr = addr;
-                    l1_3_request_type = req_type;
-                    l1_3_request_permissions = permissions;
-                    l1_3_request_data = data;
-                end
-            endcase
-        end
-    endtask
+    // Test state machine
+    localparam TEST_RESET        = 4'd0;
+    localparam TEST_L1_0_REQ_A   = 4'd1;
+    localparam TEST_L1_0_WAIT_A  = 4'd2;
+    localparam TEST_L1_1_REQ_A   = 4'd3;
+    localparam TEST_L1_1_WAIT_A  = 4'd4;
+    localparam TEST_L1_0_REQ_B   = 4'd5;
+    localparam TEST_L1_0_WAIT_B  = 4'd6;
+    localparam TEST_L1_2_REQ_C   = 4'd7;
+    localparam TEST_L1_2_WAIT_C  = 4'd8;
+    localparam TEST_DONE         = 4'd9;
     
-    task clear_l1_request;
-        input [1:0] l1_id;
-        begin
-            case (l1_id)
-                2'd0: l1_0_request_valid = 1'b0;
-                2'd1: l1_1_request_valid = 1'b0;
-                2'd2: l1_2_request_valid = 1'b0;
-                2'd3: l1_3_request_valid = 1'b0;
-            endcase
-        end
-    endtask
-    
-    // Helper task to handle probe acknowledgements
-    task send_probe_ack;
-        input [1:0] l1_id;
-        input [WADDR-1:0] addr;
-        input [2:0] permissions; // TtoT, TtoB, TtoN, BtoB, BtoN, NtoN
-        input [CACHE_LINE_BITS-1:0] dirty_data;
-        begin
-            case (l1_id)
-                2'd0: begin
-                    l1_0_probe_ack_valid = 1'b1;
-                    l1_0_probe_ack_addr = addr;
-                    l1_0_probe_ack_permissions = permissions;
-                    l1_0_probe_ack_dirty_data = dirty_data;
-                end
-                2'd1: begin
-                    l1_1_probe_ack_valid = 1'b1;
-                    l1_1_probe_ack_addr = addr;
-                    l1_1_probe_ack_permissions = permissions;
-                    l1_1_probe_ack_dirty_data = dirty_data;
-                end
-                2'd2: begin
-                    l1_2_probe_ack_valid = 1'b1;
-                    l1_2_probe_ack_addr = addr;
-                    l1_2_probe_ack_permissions = permissions;
-                    l1_2_probe_ack_dirty_data = dirty_data;
-                end
-                2'd3: begin
-                    l1_3_probe_ack_valid = 1'b1;
-                    l1_3_probe_ack_addr = addr;
-                    l1_3_probe_ack_permissions = permissions;
-                    l1_3_probe_ack_dirty_data = dirty_data;
-                end
-            endcase
-        end
-    endtask
-    
-    task clear_probe_ack;
-        input [1:0] l1_id;
-        begin
-            case (l1_id)
-                2'd0: l1_0_probe_ack_valid = 1'b0;
-                2'd1: l1_1_probe_ack_valid = 1'b0;
-                2'd2: l1_2_probe_ack_valid = 1'b0;
-                2'd3: l1_3_probe_ack_valid = 1'b0;
-            endcase
-        end
-    endtask
+    reg [3:0] test_state;
+    reg [15:0] wait_counter;
     
     // Instantiate the DUT
     tidc_top #(
@@ -339,14 +254,7 @@ module tidc_system_tb;
         .l2_response_error(l2_response_error)
     );
     
-    // Clock generation
-    initial begin
-        clk = 0;
-        forever #5 clk = ~clk; // 100MHz clock
-    end
-    
     // Simple L2 response logic (for testing)
-    // In a real system, this would be handled by a proper L2 cache controller
     always @(posedge clk) begin
         if (!rst_n) begin
             l2_response_valid <= 1'b0;
@@ -370,129 +278,230 @@ module tidc_system_tb;
         end
     end
     
-    // Simulation timeout
-    initial begin
-        #100000; // 100us timeout
-        $display("ERROR: Simulation timeout reached!");
-        $finish;
+    // Simulation timeout counter (instead of using #delay which doesn't work with external clock)
+    reg [31:0] timeout_counter;
+    
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            timeout_counter <= 32'd0;
+        end else begin
+            timeout_counter <= timeout_counter + 1;
+            if (timeout_counter >= 32'd500000) begin  // 500k cycles timeout (10ms at 50MHz)
+                $display("ERROR: Simulation timeout reached!");
+                $finish;
+            end
+        end
     end
-
-    // Test sequence focusing on TileLink protocol
+    
+    // Test state machine
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            test_state <= TEST_RESET;
+            wait_counter <= 16'd0;
+            
+            // Initialize all L1 inputs
+            l1_0_request_valid <= 1'b0;
+            l1_0_request_addr <= 32'h0;
+            l1_0_request_type <= 3'b000;
+            l1_0_request_data <= {CACHE_LINE_BITS{1'b0}};
+            l1_0_request_permissions <= 3'b000;
+            l1_0_probe_ack_valid <= 1'b0;
+            l1_0_probe_ack_addr <= 32'h0;
+            l1_0_probe_ack_permissions <= 3'b000;
+            l1_0_probe_ack_dirty_data <= {CACHE_LINE_BITS{1'b0}};
+            
+            l1_1_request_valid <= 1'b0;
+            l1_1_request_addr <= 32'h0;
+            l1_1_request_type <= 3'b000;
+            l1_1_request_data <= {CACHE_LINE_BITS{1'b0}};
+            l1_1_request_permissions <= 3'b000;
+            l1_1_probe_ack_valid <= 1'b0;
+            l1_1_probe_ack_addr <= 32'h0;
+            l1_1_probe_ack_permissions <= 3'b000;
+            l1_1_probe_ack_dirty_data <= {CACHE_LINE_BITS{1'b0}};
+            
+            l1_2_request_valid <= 1'b0;
+            l1_2_request_addr <= 32'h0;
+            l1_2_request_type <= 3'b000;
+            l1_2_request_data <= {CACHE_LINE_BITS{1'b0}};
+            l1_2_request_permissions <= 3'b000;
+            l1_2_probe_ack_valid <= 1'b0;
+            l1_2_probe_ack_addr <= 32'h0;
+            l1_2_probe_ack_permissions <= 3'b000;
+            l1_2_probe_ack_dirty_data <= {CACHE_LINE_BITS{1'b0}};
+            
+            l1_3_request_valid <= 1'b0;
+            l1_3_request_addr <= 32'h0;
+            l1_3_request_type <= 3'b000;
+            l1_3_request_data <= {CACHE_LINE_BITS{1'b0}};
+            l1_3_request_permissions <= 3'b000;
+            l1_3_probe_ack_valid <= 1'b0;
+            l1_3_probe_ack_addr <= 32'h0;
+            l1_3_probe_ack_permissions <= 3'b000;
+            l1_3_probe_ack_dirty_data <= {CACHE_LINE_BITS{1'b0}};
+        end
+        else begin
+            // Default - clear valid signals
+            l1_0_request_valid <= 1'b0;
+            l1_1_request_valid <= 1'b0;
+            l1_2_request_valid <= 1'b0;
+            l1_3_request_valid <= 1'b0;
+            
+            case (test_state)
+                TEST_RESET: begin
+                    wait_counter <= wait_counter + 1;
+                    if (wait_counter >= 16'd20) begin
+                        $display("=== TileLink Direct Adapter Testing ===");
+                        $display("TEST 1: L1_0 Read Miss (Acquire NtoB) to address %h", ADDR_A);
+                        test_state <= TEST_L1_0_REQ_A;
+                        wait_counter <= 16'd0;
+                    end
+                    else if (wait_counter == 16'd10) begin
+                        $display("Reset phase: wait_counter = %d, rst_n = %b", wait_counter, rst_n);
+                    end
+                end
+                
+                TEST_L1_0_REQ_A: begin
+                    l1_0_request_valid <= 1'b1;
+                    l1_0_request_addr <= ADDR_A;
+                    l1_0_request_type <= 3'b000; // Read miss
+                    l1_0_request_permissions <= `PARAM_NtoB;
+                    l1_0_request_data <= {CACHE_LINE_BITS{1'b0}};
+                    
+                    $display("L1_0 requesting: valid=%b, ready=%b, addr=%h", l1_0_request_valid, l1_0_request_ready, l1_0_request_addr);
+                    
+                    if (l1_0_request_ready) begin
+                        $display("L1_0 request accepted, moving to wait state");
+                        test_state <= TEST_L1_0_WAIT_A;
+                        wait_counter <= 16'd0;
+                    end
+                end
+                
+                TEST_L1_0_WAIT_A: begin
+                    if (l1_0_data_valid) begin
+                        $display("L1_0 received data: %h", l1_0_data);
+                        $display("TEST 2: L1_1 Read Miss (Acquire NtoB) to same address %h", ADDR_A);
+                        test_state <= TEST_L1_1_REQ_A;
+                        wait_counter <= 16'd0;
+                    end else begin
+                        wait_counter <= wait_counter + 1;
+                        if (wait_counter >= 16'd1000) begin
+                            $display("ERROR: Timeout waiting for L1_0 data response");
+                            $finish;
+                        end
+                    end
+                end
+                
+                TEST_L1_1_REQ_A: begin
+                    l1_1_request_valid <= 1'b1;
+                    l1_1_request_addr <= ADDR_A;
+                    l1_1_request_type <= 3'b000; // Read miss
+                    l1_1_request_permissions <= `PARAM_NtoB;
+                    l1_1_request_data <= {CACHE_LINE_BITS{1'b0}};
+                    
+                    if (l1_1_request_ready) begin
+                        test_state <= TEST_L1_1_WAIT_A;
+                        wait_counter <= 16'd0;
+                    end
+                end
+                
+                TEST_L1_1_WAIT_A: begin
+                    if (l1_1_data_valid) begin
+                        $display("L1_1 received data: %h", l1_1_data);
+                        $display("TEST 3: L1_0 Write Miss (Acquire NtoT) to address %h", ADDR_B);
+                        test_state <= TEST_L1_0_REQ_B;
+                        wait_counter <= 16'd0;
+                    end else begin
+                        wait_counter <= wait_counter + 1;
+                        if (wait_counter >= 16'd1000) begin
+                            $display("ERROR: Timeout waiting for L1_1 data response");
+                            $finish;
+                        end
+                    end
+                end
+                
+                TEST_L1_0_REQ_B: begin
+                    l1_0_request_valid <= 1'b1;
+                    l1_0_request_addr <= ADDR_B;
+                    l1_0_request_type <= 3'b001; // Write miss
+                    l1_0_request_permissions <= `PARAM_NtoT;
+                    l1_0_request_data <= {CACHE_LINE_BITS{1'b0}};
+                    
+                    if (l1_0_request_ready) begin
+                        test_state <= TEST_L1_0_WAIT_B;
+                        wait_counter <= 16'd0;
+                    end
+                end
+                
+                TEST_L1_0_WAIT_B: begin
+                    if (l1_0_data_valid) begin
+                        $display("L1_0 received exclusive data: %h", l1_0_data);
+                        $display("TEST 4: L1_2 Read Miss to address %h", ADDR_C);
+                        test_state <= TEST_L1_2_REQ_C;
+                        wait_counter <= 16'd0;
+                    end else begin
+                        wait_counter <= wait_counter + 1;
+                        if (wait_counter >= 16'd1000) begin
+                            $display("ERROR: Timeout waiting for L1_0 data response");
+                            $finish;
+                        end
+                    end
+                end
+                
+                TEST_L1_2_REQ_C: begin
+                    l1_2_request_valid <= 1'b1;
+                    l1_2_request_addr <= ADDR_C;
+                    l1_2_request_type <= 3'b000; // Read miss
+                    l1_2_request_permissions <= `PARAM_NtoB;
+                    l1_2_request_data <= {CACHE_LINE_BITS{1'b0}};
+                    
+                    if (l1_2_request_ready) begin
+                        test_state <= TEST_L1_2_WAIT_C;
+                        wait_counter <= 16'd0;
+                    end
+                end
+                
+                TEST_L1_2_WAIT_C: begin
+                    if (l1_2_data_valid) begin
+                        $display("L1_2 received data: %h", l1_2_data);
+                        test_state <= TEST_DONE;
+                        wait_counter <= 16'd0;
+                    end else begin
+                        wait_counter <= wait_counter + 1;
+                        if (wait_counter >= 16'd1000) begin
+                            $display("ERROR: Timeout waiting for L1_2 data response");
+                            $finish;
+                        end
+                    end
+                end
+                
+                TEST_DONE: begin
+                    wait_counter <= wait_counter + 1;
+                    if (wait_counter >= 16'd100) begin
+                        $display("=== TileLink Direct Testing Complete ===");
+                        $display("All basic TileLink transactions tested successfully");
+                        $finish;
+                    end
+                end
+            endcase
+        end
+    end
+    
+    // Reset sequence - counter based for Verilator compatibility
+    reg [7:0] reset_counter;
+    
+    always @(posedge clk) begin
+        if (reset_counter < 8'd50) begin  // Hold reset for 50 cycles
+            rst_n <= 1'b0;
+            reset_counter <= reset_counter + 1;
+        end else begin
+            rst_n <= 1'b1;
+        end
+    end
+    
     initial begin
-        // Initialize all L1 inputs
-        l1_0_request_valid = 1'b0;
-        l1_0_request_addr = 32'h0;
-        l1_0_request_type = 3'b000;
-        l1_0_request_data = {CACHE_LINE_BITS{1'b0}};
-        l1_0_request_permissions = 3'b000;
-        l1_0_probe_ack_valid = 1'b0;
-        l1_0_probe_ack_addr = 32'h0;
-        l1_0_probe_ack_permissions = 3'b000;
-        l1_0_probe_ack_dirty_data = {CACHE_LINE_BITS{1'b0}};
-        
-        l1_1_request_valid = 1'b0;
-        l1_1_request_addr = 32'h0;
-        l1_1_request_type = 3'b000;
-        l1_1_request_data = {CACHE_LINE_BITS{1'b0}};
-        l1_1_request_permissions = 3'b000;
-        l1_1_probe_ack_valid = 1'b0;
-        l1_1_probe_ack_addr = 32'h0;
-        l1_1_probe_ack_permissions = 3'b000;
-        l1_1_probe_ack_dirty_data = {CACHE_LINE_BITS{1'b0}};
-        
-        l1_2_request_valid = 1'b0;
-        l1_2_request_addr = 32'h0;
-        l1_2_request_type = 3'b000;
-        l1_2_request_data = {CACHE_LINE_BITS{1'b0}};
-        l1_2_request_permissions = 3'b000;
-        l1_2_probe_ack_valid = 1'b0;
-        l1_2_probe_ack_addr = 32'h0;
-        l1_2_probe_ack_permissions = 3'b000;
-        l1_2_probe_ack_dirty_data = {CACHE_LINE_BITS{1'b0}};
-        
-        l1_3_request_valid = 1'b0;
-        l1_3_request_addr = 32'h0;
-        l1_3_request_type = 3'b000;
-        l1_3_request_data = {CACHE_LINE_BITS{1'b0}};
-        l1_3_request_permissions = 3'b000;
-        l1_3_probe_ack_valid = 1'b0;
-        l1_3_probe_ack_addr = 32'h0;
-        l1_3_probe_ack_permissions = 3'b000;
-        l1_3_probe_ack_dirty_data = {CACHE_LINE_BITS{1'b0}};
-        
-        // Apply reset
-        rst_n = 0;
-        #20;
-        rst_n = 1;
-        #20;
-        
-        $display("=== TileLink Direct Adapter Testing ===");
-        
-        // TEST 1: Simple read miss from L1_0 (NtoB - None to Branch/Shared)
-        $display("TEST 1: L1_0 Read Miss (Acquire NtoB) to address %h", ADDR_A);
-        send_l1_request(2'd0, ADDR_A, 3'b000, `PARAM_NtoB, {CACHE_LINE_BITS{1'b0}});
-        
-        // Wait for request to be accepted
-        @(posedge clk);
-        while (!l1_0_request_ready) @(posedge clk);
-        clear_l1_request(2'd0);
-        
-        // Wait for response data
-        while (!l1_0_data_valid) @(posedge clk);
-        @(posedge clk);
-        $display("L1_0 received data: %h", l1_0_data);
-        #20;
-        
-        // TEST 2: L1_1 read miss to same address (should get shared access)
-        $display("TEST 2: L1_1 Read Miss (Acquire NtoB) to same address %h", ADDR_A);
-        send_l1_request(2'd1, ADDR_A, 3'b000, `PARAM_NtoB, {CACHE_LINE_BITS{1'b0}});
-        
-        // Wait for request to be accepted
-        @(posedge clk);
-        while (!l1_1_request_ready) @(posedge clk);
-        clear_l1_request(2'd1);
-        
-        // Wait for response data
-        while (!l1_1_data_valid) @(posedge clk);
-        @(posedge clk);
-        $display("L1_1 received data: %h", l1_1_data);
-        #20;
-        
-        // TEST 3: L1_0 write miss (NtoT - None to Tip/Exclusive)
-        $display("TEST 3: L1_0 Write Miss (Acquire NtoT) to address %h", ADDR_B);
-        send_l1_request(2'd0, ADDR_B, 3'b001, `PARAM_NtoT, {CACHE_LINE_BITS{1'b0}});
-        
-        // Wait for request to be accepted
-        @(posedge clk);
-        while (!l1_0_request_ready) @(posedge clk);
-        clear_l1_request(2'd0);
-        
-        // Wait for response data
-        while (!l1_0_data_valid) @(posedge clk);
-        @(posedge clk);
-        $display("L1_0 received exclusive data: %h", l1_0_data);
-        #20;
-        
-        // TEST 4: Simple read miss from L1_2 to different address
-        $display("TEST 4: L1_2 Read Miss to address %h", ADDR_C);
-        send_l1_request(2'd2, ADDR_C, 3'b000, `PARAM_NtoB, {CACHE_LINE_BITS{1'b0}});
-        
-        // Wait for request to be accepted
-        @(posedge clk);
-        while (!l1_2_request_ready) @(posedge clk);
-        clear_l1_request(2'd2);
-        
-        // Wait for response
-        while (!l1_2_data_valid) @(posedge clk);
-        @(posedge clk);
-        $display("L1_2 received data: %h", l1_2_data);
-        #20;
-        
-        // End simulation
-        $display("=== TileLink Direct Testing Complete ===");
-        $display("All basic TileLink transactions tested successfully");
-        #100;
-        $finish;
+        reset_counter = 8'd0;
+        rst_n = 1'b0;
     end
     
     // Optional: Dump waveforms for viewing in a waveform viewer

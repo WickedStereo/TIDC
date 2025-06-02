@@ -298,7 +298,7 @@ module l1_tilelink_adapter (
                         // If this was a GrantData, forward the data to the L1 cache
                         if (d_opcode == `D_OPCODE_GRANT_DATA) begin
                             data_to_l1_valid <= 1'b1;
-                            data_to_l1_data <= d_data;  // Assuming a single beat transfer for now
+                            data_to_l1_data <= {{(`CACHE_LINE_BITS-`WDATA*8){1'b0}}, d_data};  // Pad the data to cache line width
                             data_to_l1_error <= d_error;
                         end
                         
@@ -326,7 +326,7 @@ module l1_tilelink_adapter (
                     c_size <= CACHE_LINE_SIZE[`WSIZE-1:0]; // Size of a cache line
                     c_source <= pending_source_id;
                     c_address <= pending_addr;
-                    c_data <= pending_has_data ? pending_data : {`WDATA*8{1'b0}};
+                    c_data <= pending_has_data ? pending_data[`WDATA*8-1:0] : {`WDATA*8{1'b0}};
                     c_error <= 1'b0;
                     
                     // If the message was accepted by the network
@@ -374,7 +374,7 @@ module l1_tilelink_adapter (
                             probe_ack_from_l1_permissions == `PARAM_TtoN) begin
                             // We're sending data back
                             c_opcode <= `C_OPCODE_PROBE_ACK_DATA;
-                            c_data <= probe_ack_from_l1_dirty_data;
+                            c_data <= probe_ack_from_l1_dirty_data[`WDATA*8-1:0];
                         end
                         else begin
                             // No data
@@ -430,7 +430,7 @@ module l1_tilelink_adapter (
                         // If this was a read (AccessAckData), forward the data to the L1 cache
                         if (d_opcode == `D_OPCODE_ACCESS_ACK_DATA) begin
                             data_to_l1_valid <= 1'b1;
-                            data_to_l1_data <= d_data;  // Assuming a single beat transfer for now
+                            data_to_l1_data <= {{(`CACHE_LINE_BITS-`WDATA*8){1'b0}}, d_data};  // Pad the data to cache line width
                             data_to_l1_error <= d_error;
                         end
                         

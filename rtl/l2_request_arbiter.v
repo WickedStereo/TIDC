@@ -72,7 +72,7 @@ module l2_request_arbiter #(
         begin
             oh_to_binary = 0;
             for (i = 0; i < NUM_MASTERS; i = i + 1) begin
-                if (one_hot[i]) oh_to_binary = i;
+                if (one_hot[i]) oh_to_binary = i[$clog2(NUM_MASTERS)-1:0];
             end
         end
     endfunction

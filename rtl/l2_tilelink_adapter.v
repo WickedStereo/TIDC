@@ -283,7 +283,7 @@ module l2_tilelink_adapter #(
                             pending_opcode <= a_opcode[arb_master_id*3 +: 3];
                             pending_param <= a_param[arb_master_id*3 +: 3];
                             pending_source <= a_source[arb_master_id*`WSOURCE +: `WSOURCE];
-                            pending_data <= a_data[arb_master_id*`WDATA*8 +: `WDATA*8];
+                            pending_data <= {{(`CACHE_LINE_BITS-`WDATA*8){1'b0}}, a_data[arb_master_id*`WDATA*8 +: `WDATA*8]};
                         end
                         else begin // Channel C
                             // Extract Channel C signals for the selected master
@@ -291,7 +291,7 @@ module l2_tilelink_adapter #(
                             pending_opcode <= c_opcode[arb_master_id*3 +: 3];
                             pending_param <= c_param[arb_master_id*3 +: 3];
                             pending_source <= c_source[arb_master_id*`WSOURCE +: `WSOURCE];
-                            pending_data <= c_data[arb_master_id*`WDATA*8 +: `WDATA*8];
+                            pending_data <= {{(`CACHE_LINE_BITS-`WDATA*8){1'b0}}, c_data[arb_master_id*`WDATA*8 +: `WDATA*8]};
                         end
                     end
                 end
@@ -336,7 +336,7 @@ module l2_tilelink_adapter #(
                             b_opcode[i*3 +: 3] <= `B_OPCODE_PROBE_BLOCK;
                             b_param[i*3 +: 3] <= (pending_param == `PARAM_NtoT || pending_param == `PARAM_BtoT) ? 
                                                   `PARAM_toN : `PARAM_toB; // Invalidate for exclusive, downgrade for shared
-                            b_size[i*`WSIZE +: `WSIZE] <= $clog2(`CACHE_LINE_BITS/8);
+                            b_size[i*`WSIZE +: `WSIZE] <= `WSIZE'($clog2(`CACHE_LINE_BITS/8));
                             b_source[i*`WSOURCE +: `WSOURCE] <= pending_source;
                             b_address[i*`WADDR +: `WADDR] <= pending_addr;
                             b_data[i*`WDATA*8 +: `WDATA*8] <= {`WDATA*8{1'b0}};
@@ -360,7 +360,7 @@ module l2_tilelink_adapter #(
                                 l2_cmd_valid <= 1'b1;
                                 l2_cmd_type <= `L2_CMD_WRITE_BACK;
                                 l2_cmd_addr <= pending_addr;
-                                l2_cmd_data <= c_data[j*`WDATA*8 +: `WDATA*8];
+                                l2_cmd_data <= {{(`CACHE_LINE_BITS-`WDATA*8){1'b0}}, c_data[j*`WDATA*8 +: `WDATA*8]};
                                 l2_cmd_size <= $clog2(`CACHE_LINE_BITS/8);
                                 l2_cmd_dirty <= 1'b1;
                             end
@@ -391,7 +391,7 @@ module l2_tilelink_adapter #(
                         d_size[pending_master_id*`WSIZE +: `WSIZE] <= $clog2(`CACHE_LINE_BITS/8);
                         d_source[pending_master_id*`WSOURCE +: `WSOURCE] <= pending_source;
                         d_sink[pending_master_id*`WSINK +: `WSINK] <= sink_id_alloc_sink_id;
-                        d_data[pending_master_id*`WDATA*8 +: `WDATA*8] <= l2_response_data;
+                        d_data[pending_master_id*`WDATA*8 +: `WDATA*8] <= l2_response_data[`WDATA*8-1:0];
                         d_error[pending_master_id] <= l2_response_error;
                     end
                 end

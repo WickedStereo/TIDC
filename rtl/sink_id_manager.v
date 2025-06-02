@@ -71,7 +71,7 @@ module sink_id_manager (
         for (i = 1; i <= MAX_IDS; i = i + 1) begin
             // Calculate next ID with wraparound
             if (!found && !sink_id_in_use[((next_free_id + i) % MAX_IDS)]) begin
-                next_free_id <= (next_free_id + i) % MAX_IDS;
+                next_free_id <= (next_free_id + i[`WSINK-1:0]) % MAX_IDS;
                 found = 1'b1;
             end
         end
