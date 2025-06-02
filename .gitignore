@@ -11,6 +11,9 @@
 *.log
 transcript
 
+# Makefiles
+obj_dir/
+
 # ModelSim generated files
 work/
 vsim.wlf
