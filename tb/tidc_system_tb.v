@@ -4,22 +4,24 @@
 // Description: Testbench for direct TileLink adapter testing (no cache stubs)
 // =============================================================================
 
-`include "../rtl/tidc_params.vh"
-
 module tidc_system_tb;
 
     // Clock and reset
     reg clk;
     reg rst_n;
     
-    // Parameters
-    localparam NUM_L1_CACHES = `NUM_L1_CACHES;
-    localparam WDATA = `WDATA;
-    localparam WADDR = `WADDR;
-    localparam WSIZE = `WSIZE;
-    localparam WSOURCE = `WSOURCE;
-    localparam WSINK = `WSINK;
-    localparam CACHE_LINE_BITS = `CACHE_LINE_BITS;
+    // Fixed Parameters (de-parameterized)
+    localparam NUM_L1_CACHES = 4;
+    localparam WDATA = 8;  // bytes
+    localparam WADDR = 32;
+    localparam WSIZE = 4;
+    localparam WSOURCE = 4;
+    localparam WSINK = 4;
+    localparam CACHE_LINE_BITS = 256;
+    
+    // Permission parameters
+    localparam PARAM_NtoB = 0;   // None to Branch
+    localparam PARAM_NtoT = 1;   // None to Tip
     
     // L1 TileLink Adapter interfaces
     // L1 Adapter 0 interface
@@ -230,15 +232,7 @@ module tidc_system_tb;
     endtask
     
     // Instantiate the DUT
-    tidc_top #(
-        .NUM_L1_CACHES(NUM_L1_CACHES),
-        .WDATA(WDATA),
-        .WADDR(WADDR),
-        .WSIZE(WSIZE),
-        .WSOURCE(WSOURCE),
-        .WSINK(WSINK),
-        .CACHE_LINE_BITS(CACHE_LINE_BITS)
-    ) dut (
+    tidc_top dut (
         .clk(clk),
         .rst_n(rst_n),
         
@@ -430,7 +424,7 @@ module tidc_system_tb;
         
         // TEST 1: Simple read miss from L1_0 (NtoB - None to Branch/Shared)
         $display("TEST 1: L1_0 Read Miss (Acquire NtoB) to address %h", ADDR_A);
-        send_l1_request(2'd0, ADDR_A, 3'b000, `PARAM_NtoB, {CACHE_LINE_BITS{1'b0}});
+        send_l1_request(2'd0, ADDR_A, 3'b000, PARAM_NtoB, {CACHE_LINE_BITS{1'b0}});
         
         // Wait for request to be accepted
         @(posedge clk);
@@ -445,7 +439,7 @@ module tidc_system_tb;
         
         // TEST 2: L1_1 read miss to same address (should get shared access)
         $display("TEST 2: L1_1 Read Miss (Acquire NtoB) to same address %h", ADDR_A);
-        send_l1_request(2'd1, ADDR_A, 3'b000, `PARAM_NtoB, {CACHE_LINE_BITS{1'b0}});
+        send_l1_request(2'd1, ADDR_A, 3'b000, PARAM_NtoB, {CACHE_LINE_BITS{1'b0}});
         
         // Wait for request to be accepted
         @(posedge clk);
@@ -460,7 +454,7 @@ module tidc_system_tb;
         
         // TEST 3: L1_0 write miss (NtoT - None to Tip/Exclusive)
         $display("TEST 3: L1_0 Write Miss (Acquire NtoT) to address %h", ADDR_B);
-        send_l1_request(2'd0, ADDR_B, 3'b001, `PARAM_NtoT, {CACHE_LINE_BITS{1'b0}});
+        send_l1_request(2'd0, ADDR_B, 3'b001, PARAM_NtoT, {CACHE_LINE_BITS{1'b0}});
         
         // Wait for request to be accepted
         @(posedge clk);
@@ -475,7 +469,7 @@ module tidc_system_tb;
         
         // TEST 4: Simple read miss from L1_2 to different address
         $display("TEST 4: L1_2 Read Miss to address %h", ADDR_C);
-        send_l1_request(2'd2, ADDR_C, 3'b000, `PARAM_NtoB, {CACHE_LINE_BITS{1'b0}});
+        send_l1_request(2'd2, ADDR_C, 3'b000, PARAM_NtoB, {CACHE_LINE_BITS{1'b0}});
         
         // Wait for request to be accepted
         @(posedge clk);

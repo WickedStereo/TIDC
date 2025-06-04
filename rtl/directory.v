@@ -4,7 +4,8 @@
 // Description: Stores and manages the global coherence state for each cache line
 // =============================================================================
 
-`include "tidc_params.vh"
+// Include shared parameter definitions
+`include "tidc_params.v"
 
 module directory (
     input  wire                       clk,
@@ -12,45 +13,45 @@ module directory (
     
     // Directory lookup interface
     input  wire                       lookup_req,
-    input  wire [`WADDR-1:0]          lookup_addr,
+    input  wire [31:0]                lookup_addr,
     output reg                        lookup_valid,
     output reg  [2:0]                 lookup_state,  // DIR_STATE_*
-    output reg  [`NUM_L1_CACHES-1:0]  lookup_presence,  // Bit vector of L1s with this line
-    output reg  [`NUM_L1_CACHES-1:0]  lookup_tip_state, // Bit vector of L1s with Tip permission
+    output reg  [3:0]                 lookup_presence,  // Bit vector of L1s with this line
+    output reg  [3:0]                 lookup_tip_state, // Bit vector of L1s with Tip permission
     
     // Directory update interface
     input  wire                       update_req,
-    input  wire [`WADDR-1:0]          update_addr,
+    input  wire [31:0]                update_addr,
     input  wire [2:0]                 update_state,  // New directory state (DIR_STATE_*)
-    input  wire [`NUM_L1_CACHES-1:0]  update_presence,  // New presence vector
-    input  wire [`NUM_L1_CACHES-1:0]  update_tip_state, // New Tip state vector
+    input  wire [3:0]                 update_presence,  // New presence vector
+    input  wire [3:0]                 update_tip_state, // New Tip state vector
     output reg                        update_done
 );
 
     // Directory parameters
     localparam DIR_SIZE = 64;  // Small directory for testing
     localparam DIR_INDEX_WIDTH = 6;  // 6 bits for 64 entries
-    localparam DIR_TAG_WIDTH = `WADDR - DIR_INDEX_WIDTH;
+    localparam DIR_TAG_WIDTH = 32 - DIR_INDEX_WIDTH; // 26 bits
     
     // Directory entry structure
     reg [DIR_TAG_WIDTH-1:0]       dir_tags [DIR_SIZE-1:0];
     reg [2:0]                     dir_states [DIR_SIZE-1:0];
-    reg [`NUM_L1_CACHES-1:0]      dir_presence [DIR_SIZE-1:0];
-    reg [`NUM_L1_CACHES-1:0]      dir_tip_state [DIR_SIZE-1:0];
+    reg [3:0]                     dir_presence [DIR_SIZE-1:0];
+    reg [3:0]                     dir_tip_state [DIR_SIZE-1:0];
     reg                           dir_valid [DIR_SIZE-1:0];
     
     // Extract index and tag from address
     function [DIR_INDEX_WIDTH-1:0] get_index;
-        input [`WADDR-1:0] addr;
+        input [31:0] addr;
         begin
             get_index = addr[DIR_INDEX_WIDTH-1:0];
         end
     endfunction
     
     function [DIR_TAG_WIDTH-1:0] get_tag;
-        input [`WADDR-1:0] addr;
+        input [31:0] addr;
         begin
-            get_tag = addr[`WADDR-1:DIR_INDEX_WIDTH];
+            get_tag = addr[31:DIR_INDEX_WIDTH];
         end
     endfunction
     
@@ -63,7 +64,7 @@ module directory (
     reg [1:0] next_state;
     
     // Processed request storage
-    reg [`WADDR-1:0] req_addr;
+    reg [31:0] req_addr;
     
     // Reset and initialization
     integer i;
@@ -73,22 +74,22 @@ module directory (
             for (i = 0; i < DIR_SIZE; i = i + 1) begin
                 dir_valid[i] <= 1'b0;
                 dir_tags[i] <= {DIR_TAG_WIDTH{1'b0}};
-                dir_states[i] <= `DIR_STATE_INVALID;
-                dir_presence[i] <= {`NUM_L1_CACHES{1'b0}};
-                dir_tip_state[i] <= {`NUM_L1_CACHES{1'b0}};
+                dir_states[i] <= DIR_STATE_INVALID;
+                dir_presence[i] <= 4'b0;
+                dir_tip_state[i] <= 4'b0;
             end
             
             // Initialize outputs
             lookup_valid <= 1'b0;
             lookup_state <= 3'b000;
-            lookup_presence <= {`NUM_L1_CACHES{1'b0}};
-            lookup_tip_state <= {`NUM_L1_CACHES{1'b0}};
+            lookup_presence <= 4'b0;
+            lookup_tip_state <= 4'b0;
             
             update_done <= 1'b0;
             
             // Initialize state machine
             state <= STATE_IDLE;
-            req_addr <= {`WADDR{1'b0}};
+            req_addr <= 32'b0;
         end
         else begin
             // Default values
@@ -121,9 +122,9 @@ module directory (
                     else begin
                         // Directory miss (entry not present)
                         lookup_valid <= 1'b1;
-                        lookup_state <= `DIR_STATE_INVALID;
-                        lookup_presence <= {`NUM_L1_CACHES{1'b0}};
-                        lookup_tip_state <= {`NUM_L1_CACHES{1'b0}};
+                        lookup_state <= DIR_STATE_INVALID;
+                        lookup_presence <= 4'b0;
+                        lookup_tip_state <= 4'b0;
                     end
                 end
                 

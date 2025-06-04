@@ -4,30 +4,28 @@
 // Description: Manages allocation and deallocation of source IDs for L1 adapters
 // =============================================================================
 
-`include "tidc_params.vh"
-
 module source_id_manager (
-    input  wire                     clk,
-    input  wire                     rst,
+    input  wire                   clk,
+    input  wire                   rst,
     
     // Source ID allocation interface
-    input  wire                     alloc_req,
-    output wire                     alloc_gnt,
-    output wire [`WSOURCE-1:0]      alloc_source_id,
+    input  wire                   alloc_req,
+    output wire                   alloc_gnt,
+    output wire [3:0]             alloc_source_id,
     
     // Source ID deallocation interface
-    input  wire                     dealloc_req,
-    input  wire [`WSOURCE-1:0]      dealloc_source_id
+    input  wire                   dealloc_req,
+    input  wire [3:0]             dealloc_source_id
 );
 
-    // Maximum number of source IDs = 2^WSOURCE
-    localparam MAX_IDS = (1 << `WSOURCE);
+    // Maximum number of source IDs = 2^4 = 16
+    localparam MAX_IDS = 16;
     
     // Bitmap to track which source IDs are in use (1 = in use, 0 = free)
     reg [MAX_IDS-1:0] source_id_in_use;
     
     // Next source ID to allocate
-    reg [`WSOURCE-1:0] next_free_id;
+    reg [3:0] next_free_id;
     
     // Flag to indicate if any source IDs are available
     wire any_id_available;
@@ -39,7 +37,7 @@ module source_id_manager (
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             source_id_in_use <= {MAX_IDS{1'b0}}; // All IDs free after reset
-            next_free_id <= {`WSOURCE{1'b0}};   // Start allocating from ID 0
+            next_free_id <= 4'b0;   // Start allocating from ID 0
             alloc_gnt_r <= 1'b0;
         end
         else begin
@@ -71,7 +69,7 @@ module source_id_manager (
         for (i = 1; i <= MAX_IDS; i = i + 1) begin
             // Calculate next ID with wraparound
             if (!found && !source_id_in_use[((next_free_id + i) % MAX_IDS)]) begin
-                next_free_id <= (next_free_id + i[`WSOURCE-1:0]) % MAX_IDS;
+                next_free_id <= (next_free_id + i[3:0]) % MAX_IDS;
                 found = 1'b1;
             end
         end

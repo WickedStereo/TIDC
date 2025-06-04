@@ -4,7 +4,8 @@
 // Description: Testbench for direct TileLink adapter testing - compatible with Verilator
 // =============================================================================
 
-`include "../rtl/tidc_params.vh"
+// Include shared parameter definitions
+`include "tidc_params.v"
 
 module tidc_system_tb (
     input wire clk  // Clock driven from C++ for Verilator compatibility
@@ -12,15 +13,6 @@ module tidc_system_tb (
 
     // Reset
     reg rst_n;
-    
-    // Parameters
-    localparam NUM_L1_CACHES = `NUM_L1_CACHES;
-    localparam WDATA = `WDATA;
-    localparam WADDR = `WADDR;
-    localparam WSIZE = `WSIZE;
-    localparam WSOURCE = `WSOURCE;
-    localparam WSINK = `WSINK;
-    localparam CACHE_LINE_BITS = `CACHE_LINE_BITS;
     
     // L1 TileLink Adapter interfaces
     // L1 Adapter 0 interface
@@ -145,15 +137,7 @@ module tidc_system_tb (
     reg [15:0] wait_counter;
     
     // Instantiate the DUT
-    tidc_top #(
-        .NUM_L1_CACHES(NUM_L1_CACHES),
-        .WDATA(WDATA),
-        .WADDR(WADDR),
-        .WSIZE(WSIZE),
-        .WSOURCE(WSOURCE),
-        .WSINK(WSINK),
-        .CACHE_LINE_BITS(CACHE_LINE_BITS)
-    ) dut (
+    tidc_top dut (
         .clk(clk),
         .rst_n(rst_n),
         
@@ -365,7 +349,7 @@ module tidc_system_tb (
                     l1_0_request_valid <= 1'b1;
                     l1_0_request_addr <= ADDR_A;
                     l1_0_request_type <= 3'b000; // Read miss
-                    l1_0_request_permissions <= `PARAM_NtoB;
+                    l1_0_request_permissions <= PARAM_NtoB;
                     l1_0_request_data <= {CACHE_LINE_BITS{1'b0}};
                     
                     $display("L1_0 requesting: valid=%b, ready=%b, addr=%h", l1_0_request_valid, l1_0_request_ready, l1_0_request_addr);
@@ -396,7 +380,7 @@ module tidc_system_tb (
                     l1_1_request_valid <= 1'b1;
                     l1_1_request_addr <= ADDR_A;
                     l1_1_request_type <= 3'b000; // Read miss
-                    l1_1_request_permissions <= `PARAM_NtoB;
+                    l1_1_request_permissions <= PARAM_NtoB;
                     l1_1_request_data <= {CACHE_LINE_BITS{1'b0}};
                     
                     if (l1_1_request_ready) begin
@@ -424,7 +408,7 @@ module tidc_system_tb (
                     l1_0_request_valid <= 1'b1;
                     l1_0_request_addr <= ADDR_B;
                     l1_0_request_type <= 3'b001; // Write miss
-                    l1_0_request_permissions <= `PARAM_NtoT;
+                    l1_0_request_permissions <= PARAM_NtoT;
                     l1_0_request_data <= {CACHE_LINE_BITS{1'b0}};
                     
                     if (l1_0_request_ready) begin
@@ -452,7 +436,7 @@ module tidc_system_tb (
                     l1_2_request_valid <= 1'b1;
                     l1_2_request_addr <= ADDR_C;
                     l1_2_request_type <= 3'b000; // Read miss
-                    l1_2_request_permissions <= `PARAM_NtoB;
+                    l1_2_request_permissions <= PARAM_NtoB;
                     l1_2_request_data <= {CACHE_LINE_BITS{1'b0}};
                     
                     if (l1_2_request_ready) begin

@@ -4,8 +4,6 @@
 // Description: Manages allocation and deallocation of sink IDs for L2 adapter
 // =============================================================================
 
-`include "tidc_params.vh"
-
 module sink_id_manager (
     input  wire                   clk,
     input  wire                   rst,
@@ -13,21 +11,21 @@ module sink_id_manager (
     // Sink ID allocation interface
     input  wire                   alloc_req,
     output wire                   alloc_gnt,
-    output wire [`WSINK-1:0]      alloc_sink_id,
+    output wire [3:0]             alloc_sink_id,
     
     // Sink ID deallocation interface
     input  wire                   dealloc_req,
-    input  wire [`WSINK-1:0]      dealloc_sink_id
+    input  wire [3:0]             dealloc_sink_id
 );
 
-    // Maximum number of sink IDs = 2^WSINK
-    localparam MAX_IDS = (1 << `WSINK);
+    // Maximum number of sink IDs = 2^4 = 16
+    localparam MAX_IDS = 16;
     
     // Bitmap to track which sink IDs are in use (1 = in use, 0 = free)
     reg [MAX_IDS-1:0] sink_id_in_use;
     
     // Next sink ID to allocate
-    reg [`WSINK-1:0] next_free_id;
+    reg [3:0] next_free_id;
     
     // Flag to indicate if any sink IDs are available
     wire any_id_available;
@@ -39,7 +37,7 @@ module sink_id_manager (
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             sink_id_in_use <= {MAX_IDS{1'b0}}; // All IDs free after reset
-            next_free_id <= {`WSINK{1'b0}};   // Start allocating from ID 0
+            next_free_id <= 4'b0;   // Start allocating from ID 0
             alloc_gnt_r <= 1'b0;
         end
         else begin
@@ -71,7 +69,7 @@ module sink_id_manager (
         for (i = 1; i <= MAX_IDS; i = i + 1) begin
             // Calculate next ID with wraparound
             if (!found && !sink_id_in_use[((next_free_id + i) % MAX_IDS)]) begin
-                next_free_id <= (next_free_id + i[`WSINK-1:0]) % MAX_IDS;
+                next_free_id <= (next_free_id + i[3:0]) % MAX_IDS;
                 found = 1'b1;
             end
         end
